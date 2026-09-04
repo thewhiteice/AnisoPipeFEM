@@ -3,15 +3,16 @@
     build_stiffness() 计算刚度矩阵
     stiffness_to_properties() 刚度矩阵计算材料属性函数
     bond_transform() 刚度矩阵 Bond 变换
-    condense_stiffness() 静力凝聚函数 
+    condense_stiffness() 静力凝聚函数
     cyl2mat_stress() 柱坐标系下应力转换到材料坐标系
 """
 
 import numpy as np
 
+
 def build_stiffness(E_list, nu_list, G_list):
     E1, E2, E3 = E_list[0], E_list[1], E_list[2]
-    nu12, nu13 ,nu23 = nu_list[0], nu_list[1], nu_list[2]
+    nu12, nu13, nu23 = nu_list[0], nu_list[1], nu_list[2]
     G12, G13, G23 = G_list[0], G_list[1], G_list[2]
 
     S = np.array(
@@ -32,14 +33,14 @@ def build_stiffness(E_list, nu_list, G_list):
 def stiffness_to_properties(C):
     """
     从正交各向异性刚度矩阵(6x6)恢复工程弹性常数。
-    
+
     输入:
         C : np.ndarray, shape (6,6), 正交各向异性刚度矩阵
-    
+
     输出:
-        E_list : 
+        E_list :
             E1, E2, E3
-        nu_list: 
+        nu_list:
             nu12, nu13, nu23
         G_list:
             G12, G13, G23
@@ -47,17 +48,17 @@ def stiffness_to_properties(C):
     C = np.asarray(C, dtype=float)
     # 求柔度矩阵 S = C^{-1}
     S = np.linalg.inv(C)
-    
+
     # 弹性模量
     E1 = 1.0 / S[0, 0]
     E2 = 1.0 / S[1, 1]
     E3 = 1.0 / S[2, 2]
-    
+
     # 泊松比（注意定义：nu12 = -S12 * E1）
     nu12 = -S[0, 1] * E1
     nu13 = -S[0, 2] * E1
     nu23 = -S[1, 2] * E2
-    
+
     # 剪切模量
     G23 = 1.0 / S[3, 3]
     G13 = 1.0 / S[4, 4]
@@ -66,7 +67,7 @@ def stiffness_to_properties(C):
     E_list = np.array([E1, E2, E3])
     nu_list = np.array([nu12, nu13, nu23])
     G_list = np.array([G12, G13, G23])
-    
+
     return E_list, nu_list, G_list
 
 
@@ -92,19 +93,19 @@ def bond_transform(G, phi):
 
     c = np.cos(phi)
     s = np.sin(phi)
-    c2 = np.cos(2*phi)   # 等价于 c^2 - s^2
+    c2 = np.cos(2 * phi)  # 等价于 c^2 - s^2
     cs = c * s
 
     # 构建变换矩阵 M (6x6)
     z = np.zeros_like(c)
     o = np.ones_like(c)
 
-    row0 = np.stack([c**2,   s**2,   z,   z,   z,   2*cs], axis=-1)
-    row1 = np.stack([s**2,   c**2,   z,   z,   z,  -2*cs], axis=-1)
-    row2 = np.stack([z,      z,      o,   z,   z,   z],    axis=-1)
-    row3 = np.stack([z,      z,      z,   c,  -s,   z],    axis=-1)
-    row4 = np.stack([z,      z,      z,   s,   c,   z],    axis=-1)
-    row5 = np.stack([-cs,    cs,     z,   z,   z,   c2],   axis=-1)
+    row0 = np.stack([c**2, s**2, z, z, z, 2 * cs], axis=-1)
+    row1 = np.stack([s**2, c**2, z, z, z, -2 * cs], axis=-1)
+    row2 = np.stack([z, z, o, z, z, z], axis=-1)
+    row3 = np.stack([z, z, z, c, -s, z], axis=-1)
+    row4 = np.stack([z, z, z, s, c, z], axis=-1)
+    row5 = np.stack([-cs, cs, z, z, z, c2], axis=-1)
 
     M = np.stack([row0, row1, row2, row3, row4, row5], axis=-2)
 
