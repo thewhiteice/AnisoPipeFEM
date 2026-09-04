@@ -1,0 +1,9 @@
+.pytest_cache/
+.vscode/
+.zed/
+*/draft/
+*/__pycache__
+
+**/*.png
+**/*.npy
+**/*.bin
