@@ -7,17 +7,14 @@
 """
 
 import numpy as np
-from tqdm import tqdm
 import ufl
 from dolfinx import fem, mesh
-from dolfinx.fem.petsc import LinearProblem
+from dolfinx.fem.petsc import LinearProblem, assemble_matrix, assemble_vector
 from dolfinx.mesh import locate_entities_boundary, meshtags
 from mpi4py import MPI
-
-from dolfinx.fem import form, Function, functionspace, dirichletbc
-from dolfinx.fem.petsc import assemble_matrix, assemble_vector
-from dolfinx import la
 from petsc4py import PETSc
+from tqdm import tqdm
+
 
 def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
     """
@@ -48,7 +45,7 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
 
     # ===== 定义几何与网格 ======
     domain = mesh.create_interval(MPI.COMM_WORLD, nx, [r_in, r_out])
-    r = ufl.SpatialCoordinate(domain)[0]    # 径向坐标
+    r = ufl.SpatialCoordinate(domain)[0]  # 径向坐标
 
     # ===== 定义函数空间 (径向位移场) =====
     V_u = fem.functionspace(domain, ("Lagrange", 2))
@@ -58,8 +55,8 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
     # ===== 定义材料参数 =====
     E = fem.Constant(domain, E)  # 弹性模量(Pa)
     nu = fem.Constant(domain, nu)  # 泊松比
-    G = E / (2 * (1 + nu)) 
-    lmbda = E * nu / ((1 + nu) * (1 - 2 * nu)) 
+    G = E / (2 * (1 + nu))
+    lmbda = E * nu / ((1 + nu) * (1 - 2 * nu))
 
     # ===== 定义应力与应变 (平面应变状态, ε_z=0)
     eps_r = ufl.grad(u)[0]
@@ -91,13 +88,13 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
     ds = ufl.Measure("ds", domain=domain, subdomain_data=mt)
 
     RHS = 2 * ufl.pi * r_in * p_a * v * ds(1) - 2 * ufl.pi * r_out * p_b * v * ds(2)
-    rhs_form = form(RHS)
+    rhs_form = fem.form(RHS)
 
     # ===== 求解平面应变位移场 =====
     u_0_sol = fem.Function(V_u)
 
     # 组装矩阵
-    A = assemble_matrix(form(LHS), bcs=[])
+    A = assemble_matrix(fem.form(LHS), bcs=[])
     A.assemble()
 
     # 创建求解器
@@ -162,7 +159,9 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
             eps_r_sol = ufl.grad(u_0_sol)[0]
             eps_theta_sol = u_0_sol / r
             sigma_r_val = lmbda * (eps_r_sol + eps_theta_sol) + 2 * G * eps_r_sol
-            sigma_theta_val = lmbda * (eps_r_sol + eps_theta_sol) + 2 * G * eps_theta_sol
+            sigma_theta_val = (
+                lmbda * (eps_r_sol + eps_theta_sol) + 2 * G * eps_theta_sol
+            )
             sigma_z_val = lmbda * (eps_r_sol + eps_theta_sol) + delta_sigma_z
 
             sigma_r_expr = fem.Expression(sigma_r_val, ip)
@@ -185,7 +184,9 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
             sigma_r_vals = sigma_r_sol.x.array.copy()
             sigma_theta_vals = sigma_theta_sol.x.array.copy()
             sigma_z_vals = sigma_z_sol.x.array.copy()
-            sigma_vals = np.stack([sigma_r_vals, sigma_theta_vals, sigma_z_vals], axis=0)
+            sigma_vals = np.stack(
+                [sigma_r_vals, sigma_theta_vals, sigma_z_vals], axis=0
+            )
             sigma_vals_list[i][j][:3] = sigma_vals
 
             # 更新 tqdm
@@ -196,7 +197,9 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
     return r_vals, u_vals_list, sigma_vals_list
 
 
-def solve_aniso_pipe(r_interface_list, C_basic, theta_list, p_in_list, p_out_list, nx=100):
+def solve_aniso_pipe(
+    r_interface_list, C_basic, theta_list, p_in_list, p_out_list, nx=100
+):
     """
     各向异性圆管径向应力分布求解器
 
@@ -248,6 +251,7 @@ def solve_lame_stress(r, r_in, r_out, p_in, p_out):
 
     return s_r, s_t, s_z
 
+
 def main():
     r_in = 0.1
     r_out = 0.2
@@ -256,7 +260,9 @@ def main():
     p_out_list = np.linspace(0.0, 0.1e6, 3)
     p_in_list = np.linspace(1.0e6, 5.0e6, 5)
 
-    r_vals, u_vals_list, s_vals_list = solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list)
+    r_vals, u_vals_list, s_vals_list = solve_iso_pipe(
+        r_in, r_out, E, nu, p_in_list, p_out_list
+    )
 
     print("solve_iso_pipe solution:")
     print(f"r_vals.shape = {r_vals.shape}")
