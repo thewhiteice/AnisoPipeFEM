@@ -40,8 +40,8 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
             - 索引2: sigma_z
     """
     # 修改类型
-    p_in_list = np.asarray(p_in_list)
-    p_out_list = np.asarray(p_out_list)
+    p_in_list = np.atleast_1d(p_in_list)
+    p_out_list = np.atleast_1d(p_out_list)
 
     # ===== 定义几何与网格 ======
     domain = mesh.create_interval(MPI.COMM_WORLD, nx, [r_in, r_out])
@@ -74,7 +74,7 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
 
     # 右边：外力虚功（仅内外压，去掉轴向力项）
     p_a = fem.Constant(domain, p_in_list[0])  # 内壁压强(Pa)
-    p_b = fem.Constant(domain, p_in_list[1])  # 外壁压强(Pa)
+    p_b = fem.Constant(domain, p_out_list[0])  # 外壁压强(Pa)
     F_total = np.pi * (r_in**2 * p_a.value - r_out**2 * p_b.value)  # 总轴向拉力(N)
 
     # 边界标记与积分
@@ -212,7 +212,7 @@ def solve_aniso_pipe(
         theta_list: 铺层角度数组 rad (layers_num,)
         p_i_list:   内壁压强数组 Pa (...,)
         p_o_list:   外壁压强数组 Pa (...,)
-        nx:         网格单元数及插值输出数 默认=200 int
+        nx:         网格单元数及插值输出数 默认=100 int
     输出:
         r_vals: 径向插值坐标 (nx,)
         u_vals: 插值径向位移 (nx,)
