@@ -75,7 +75,7 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
     # 右边：外力虚功（仅内外压，去掉轴向力项）
     p_a = fem.Constant(domain, p_in_list[0])  # 内壁压强(Pa)
     p_b = fem.Constant(domain, p_out_list[0])  # 外壁压强(Pa)
-    F_total = np.pi * (r_in**2 * p_a.value - r_out**2 * p_b.value)  # 总轴向拉力(N)
+    F_total = np.pi * (r_in**2 * p_a.value - r_out**2 * p_b.value)  # 总轴向拉力(N) 循环内更新
 
     # 边界标记与积分
     fdim = domain.topology.dim - 1
@@ -88,30 +88,15 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
     ds = ufl.Measure("ds", domain=domain, subdomain_data=mt)
 
     RHS = 2 * ufl.pi * r_in * p_a * v * ds(1) - 2 * ufl.pi * r_out * p_b * v * ds(2)
-    rhs_form = fem.form(RHS)
 
-    # ===== 求解平面应变位移场 =====
-    u_0_sol = fem.Function(V_u)
-
-    # 组装矩阵
-    A = assemble_matrix(fem.form(LHS), bcs=[])
-    A.assemble()
-
-    # 创建求解器
-    solver = PETSc.KSP().create(domain.comm)
-    solver.setOperators(A)
-    solver.setType("preonly")
-    solver.getPC().setType("lu")
-    """
+    # ===== 创建求解器 =====
     problem = LinearProblem(
         LHS,
         RHS,
         bcs=[],
-        u=u_0_sol,
         petsc_options_prefix="solve_",
         petsc_options={"ksp_type": "preonly", "pc_type": "lu"},
     )
-    """
 
     # ===== 定义输出 DG0 空间 =====
     V_dg0 = fem.functionspace(domain, ("DG", 0))
@@ -137,11 +122,8 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
             # ===== 更新参数 组装矩阵并求解 =====
             p_a.value = p_i
             p_b.value = p_o
-            b = assemble_vector(rhs_form)
-            # b.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)
-            # u_0_sol = problem.solve()
-            solver.solve(b, u_0_sol.x.petsc_vec)
-            u_0_sol.x.scatter_forward()
+            F_total = np.pi * (r_in**2 * p_i - r_out**2 * p_o)
+            u_0_sol = problem.solve()
 
             # ===== 叠加法计算广义平面应变总解 =====
             # 1. 计算平面应变下的总轴向力F0
@@ -191,7 +173,7 @@ def solve_iso_pipe(r_in, r_out, E, nu, p_in_list, p_out_list, nx=100):
 
             # 更新 tqdm
             pbar.update(1)
-            tqdm.write(f"u_0_sol.x.norm() = {np.linalg.norm(u_0_sol.x.array)}")
+            # tqdm.write(f"u_0_sol.x.norm() = {np.linalg.norm(u_0_sol.x.array)}")
 
     pbar.close()
     return r_vals, u_vals_list, sigma_vals_list
