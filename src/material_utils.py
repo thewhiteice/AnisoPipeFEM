@@ -184,3 +184,50 @@ def cyl2mat_stress(sigma_cyl, theta_rad):
     # 恢复原始形状
     sigma_loc = sigma_loc_flat.reshape(original_shape)
     return sigma_loc
+
+
+def build_transformation_matrices(angles):
+    c = np.cos(angles)
+    s = np.sin(angles)
+    n = len(angles)
+    T = np.zeros((n, 6, 6))
+
+    # 正应力变换
+    T[:, 0, 1] = s * s
+    T[:, 0, 2] = c * c
+    T[:, 0, 3] = 2.0 * s * c
+
+    T[:, 1, 1] = c * c
+    T[:, 1, 2] = s * s
+    T[:, 1, 3] = -2.0 * s * c
+
+    T[:, 2, 0] = 1.0
+
+    # 剪应力变换
+    T[:, 3, 3] = -c
+    T[:, 3, 4] = s
+
+    T[:, 4, 3] = -s
+    T[:, 4, 4] = -c
+
+    T[:, 5, 1] = -s * c
+    T[:, 5, 2] = s * c
+    T[:, 5, 3] = c * c - s * s
+
+    return T
+
+
+def cyl2mat_stress_v(sigma_cyl, angles):
+    """
+    sigma_cyl: (nx, 6) 柱坐标应力
+    angles: (nx,) 每个单元铺层角
+    返回: (nx, 6) 材料主方向应力
+    """
+    T = build_transformation_matrices(angles)   # (nx,6,6)
+    # 批量矩阵乘法：对每个 i 计算 T[i] @ sigma_cyl[i]
+    return np.einsum('nij,nj->ni', T, sigma_cyl)
+
+
+def cyl2mat_strain_v(eps_cyl, angles):
+    T = build_transformation_matrices(angles)
+    return np.einsum('nij,nj->ni', T, eps_cyl)
