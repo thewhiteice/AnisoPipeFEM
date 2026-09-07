@@ -75,7 +75,7 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
     参数:
       应力分量 $sigma$ = [s1, s2, s3, t23, t13, t12]
     输出:
-      失效判断
+      失效判断 shape(4, nx)
     """
 
     Xt = criteria["Xt"]  # 拉伸强度 (正)
@@ -118,6 +118,6 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
         + (t_13 / S13) ** 2
     )
 
-    L = np.stack([L1, L2, L3, L4], axis=-1)
+    L = np.stack([L1, L2, L3, L4], axis=0)  #
 
     return (L >= 1.0).astype(int)
