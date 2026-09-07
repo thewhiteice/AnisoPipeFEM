@@ -61,7 +61,7 @@ def tsai_wu(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
         + 2 * (F12 * s_1 * s_2 + F23 * s_2 * s_3 + F13 * s_3 * s_1)
     )
 
-    return L >= 1.0
+    return (L >= 1.0).astype(int)
 
 
 def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
@@ -120,4 +120,4 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
 
     L = np.stack([L1, L2, L3, L4], axis=-1)
 
-    return L >= 1.0
+    return (L >= 1.0).astype(int)
