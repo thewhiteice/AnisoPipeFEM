@@ -204,11 +204,11 @@ def build_transformation_matrices(angles):
     T[:, 2, 0] = 1.0
 
     # 剪应力变换
-    T[:, 3, 3] = -c
     T[:, 3, 4] = s
+    T[:, 3, 5] = -c
 
-    T[:, 4, 3] = -s
-    T[:, 4, 4] = -c
+    T[:, 4, 4] = c
+    T[:, 4, 5] = s
 
     T[:, 5, 1] = -s * c
     T[:, 5, 2] = s * c
