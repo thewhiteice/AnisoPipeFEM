@@ -7,3 +7,5 @@
 **/*.png
 **/*.npy
 **/*.bin
+
+log.md
