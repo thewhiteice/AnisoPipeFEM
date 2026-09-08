@@ -71,49 +71,6 @@ def stiffness_to_properties(C):
     return E_list, nu_list, G_list
 
 
-def bond_transform(G, phi):
-    """
-    计算 bond 变换矩阵
-        G: 输入矩阵 (..., L1, 6, 6)
-        phi: 旋转角度 (弧度) (L1,)
-    返回:
-        G1 = M * G * M^T (..., L1, 6, 6)
-    """
-
-    phi = np.asarray(phi)
-    G = np.asarray(G)
-
-    # 检查批量维度是否可广播
-    try:
-        _ = np.broadcast_shapes(phi.shape, G.shape[:-2])
-    except ValueError:
-        raise ValueError(
-            f"phi 形状 {phi.shape} 与 G 的前导维度 {G.shape[:-2]} 无法广播。"
-        )
-
-    c = np.cos(phi)
-    s = np.sin(phi)
-    c2 = np.cos(2 * phi)  # 等价于 c^2 - s^2
-    cs = c * s
-
-    # 构建变换矩阵 M (6x6)
-    z = np.zeros_like(c)
-    o = np.ones_like(c)
-
-    row0 = np.stack([c**2, s**2, z, z, z, 2 * cs], axis=-1)
-    row1 = np.stack([s**2, c**2, z, z, z, -2 * cs], axis=-1)
-    row2 = np.stack([z, z, o, z, z, z], axis=-1)
-    row3 = np.stack([z, z, z, c, -s, z], axis=-1)
-    row4 = np.stack([z, z, z, s, c, z], axis=-1)
-    row5 = np.stack([-cs, cs, z, z, z, c2], axis=-1)
-
-    M = np.stack([row0, row1, row2, row3, row4, row5], axis=-2)
-
-    # 计算 G1 = M * G * M^T
-    G1 = M @ G @ M.swapaxes(-1, -2)
-    return G1
-
-
 def condense_stiffness(C: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     静力凝聚
@@ -215,6 +172,31 @@ def build_transformation_matrices(angles):
     T[:, 5, 3] = c * c - s * s
 
     return T
+
+
+def bond_transform(G, phi):
+    """
+    计算 bond 变换矩阵 r轴 (1轴)
+        G: 输入矩阵 (..., L1, 6, 6)
+        phi: 旋转角度 (弧度) (L1,)
+    返回:
+        G1 = M * G * M^T (..., L1, 6, 6)
+    """
+
+    phi = np.asarray(phi)
+    G = np.asarray(G)
+
+    # 获取绕 r 轴的变换矩阵 T（柱→材料）
+    phi_1d = np.atleast_1d(phi)
+    T = build_transformation_matrices(phi_1d)   # 形状 (..., 6, 6)
+
+    # 合同变换：G_cyl = T^T @ G @ T
+    G_cyl = np.einsum('...ji,...jk,...kl->...il', T, G, T)
+
+    if phi.ndim == 0:
+        G_cyl = np.squeeze(G_cyl, axis=0)
+        
+    return G_cyl
 
 
 def cyl2mat_stress_v(sigma_cyl, angles):
