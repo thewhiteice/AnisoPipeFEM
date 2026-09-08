@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 
 import basix
@@ -9,7 +10,7 @@ from dolfinx.mesh import locate_entities_boundary, meshtags
 from mpi4py import MPI
 from tqdm import tqdm
 
-from config.config import setup_config2
+from config.config import setup_config1, setup_config2, setup_config3
 from src.failure_criteria import hashin
 from src.material_utils import (
     bond_transform,
@@ -45,6 +46,11 @@ class Layers:
     S12: np.ndarray  # 面内剪切强度
     S13: np.ndarray
     S23: np.ndarray
+    # 损伤起始应变（材料常数，按单元广播）
+    eps0_ft: np.ndarray
+    eps0_fc: np.ndarray
+    eps0_mt: np.ndarray
+    eps0_mc: np.ndarray
     # 断裂能
     Gft: np.ndarray  # 纤维拉伸断裂能
     Gfc: np.ndarray  # 纤维压缩断裂能
@@ -61,11 +67,6 @@ class Damagestate:
     d_fc: np.ndarray
     d_mt: np.ndarray
     d_mc: np.ndarray
-    # 损伤起始应变
-    eps0_ft: np.ndarray
-    eps0_fc: np.ndarray
-    eps0_mt: np.ndarray
-    eps0_mc: np.ndarray
     # 折减后的工程常数
     E1: np.ndarray
     E2: np.ndarray
@@ -179,6 +180,12 @@ def init_layers(r_interface_list, C_basic_list, theta_rad_list, failure_list, nx
     Gmt_l = np.array([f.get("Gmt", 0.3e3) for f in failure_list])
     Gmc_l = np.array([f.get("Gmc", 0.8e3) for f in failure_list])
 
+    # ---------- 计算每层损伤起始应变 ----------
+    eps0_ft_l = XT_l / E1_l
+    eps0_fc_l = XC_l / E1_l
+    eps0_mt_l = YT_l / E2_l
+    eps0_mc_l = YC_l / E2_l
+
     # ---------- 广播到每个单元 ----------
     idx = layer_idx  # 形状 (nx,)
     return Layers(
@@ -197,6 +204,10 @@ def init_layers(r_interface_list, C_basic_list, theta_rad_list, failure_list, nx
         XC=XC_l[idx],
         YT=YT_l[idx],
         YC=YC_l[idx],
+        eps0_ft=eps0_ft_l[idx],
+        eps0_fc=eps0_fc_l[idx],
+        eps0_mt=eps0_mt_l[idx],
+        eps0_mc=eps0_mc_l[idx],
         S12=S12_l[idx],
         S13=S13_l[idx],
         S23=S23_l[idx],
@@ -214,10 +225,6 @@ def init_damagestate(layers: Layers) -> Damagestate:
         d_fc=np.zeros(nx),
         d_mt=np.zeros(nx),
         d_mc=np.zeros(nx),
-        eps0_ft=np.zeros(nx),
-        eps0_fc=np.zeros(nx),
-        eps0_mt=np.zeros(nx),
-        eps0_mc=np.zeros(nx),
         E1=layers.E1.copy(),
         E2=layers.E2.copy(),
         E3=layers.E3.copy(),
@@ -439,8 +446,9 @@ def update_damage(state, layers, hashin_trigger, eps_mat):
     state: Damagestate, 原地更新
     layers: Layers, 原始材料参数
     hashin_trigger: (4, nx) 0/1 数组，顺序 [ft, fc, mt, mc]
-    eps_mat: (nx, 6) 材料坐标系应变，顺序 [ε1, ε2, ε3, γ23, γ13, γ12]
+    eps_mat: (nx, 6) 材料坐标系应变，顺序 [ε1, ε2, ε3, ε23, ε13, ε12]
     """
+
     eps1 = eps_mat[:, 0]
     eps2 = eps_mat[:, 1]
 
@@ -448,6 +456,12 @@ def update_damage(state, layers, hashin_trigger, eps_mat):
     eq_fc = np.abs(np.minimum(eps1, 0.0))
     eq_mt = np.maximum(eps2, 0.0)
     eq_mc = np.abs(np.minimum(eps2, 0.0))
+
+    # 固定损伤起始应变
+    eps0_ft = layers.eps0_ft
+    eps0_fc = layers.eps0_fc
+    eps0_mt = layers.eps0_mt
+    eps0_mc = layers.eps0_mc
 
     epsf_ft = 2.0 * layers.Gft / (layers.XT * layers.h)
     epsf_fc = 2.0 * layers.Gfc / (layers.XC * layers.h)
@@ -459,33 +473,34 @@ def update_damage(state, layers, hashin_trigger, eps_mat):
     active_mt = (state.d_mt > 0) | (hashin_trigger[2] == 1)
     active_mc = (state.d_mc > 0) | (hashin_trigger[3] == 1)
 
-    first_ft = active_ft & (state.d_ft == 0)
-    first_fc = active_fc & (state.d_fc == 0)
-    first_mt = active_mt & (state.d_mt == 0)
-    first_mc = active_mc & (state.d_mc == 0)
-
-    state.eps0_ft[first_ft] = eq_ft[first_ft]
-    state.eps0_fc[first_fc] = eq_fc[first_fc]
-    state.eps0_mt[first_mt] = eq_mt[first_mt]
-    state.eps0_mc[first_mc] = eq_mc[first_mc]
-
-    d_new_ft = (eq_ft - state.eps0_ft) / (epsf_ft - state.eps0_ft + 1e-30)
-    d_new_fc = (eq_fc - state.eps0_fc) / (epsf_fc - state.eps0_fc + 1e-30)
-    d_new_mt = (eq_mt - state.eps0_mt) / (epsf_mt - state.eps0_mt + 1e-30)
-    d_new_mc = (eq_mc - state.eps0_mc) / (epsf_mc - state.eps0_mc + 1e-30)
+    d_new_ft = (eq_ft - eps0_ft) / (epsf_ft - eps0_ft + 1e-30)
+    d_new_fc = (eq_fc - eps0_fc) / (epsf_fc - eps0_fc + 1e-30)
+    d_new_mt = (eq_mt - eps0_mt) / (epsf_mt - eps0_mt + 1e-30)
+    d_new_mc = (eq_mc - eps0_mc) / (epsf_mc - eps0_mc + 1e-30)
 
     state.d_ft = np.minimum(
-        1.0, np.maximum(state.d_ft, np.where(active_ft, d_new_ft, 0.0))
+        0.999, np.maximum(state.d_ft, np.where(active_ft, d_new_ft, 0.0))
     )
     state.d_fc = np.minimum(
-        1.0, np.maximum(state.d_fc, np.where(active_fc, d_new_fc, 0.0))
+        0.999, np.maximum(state.d_fc, np.where(active_fc, d_new_fc, 0.0))
     )
     state.d_mt = np.minimum(
-        1.0, np.maximum(state.d_mt, np.where(active_mt, d_new_mt, 0.0))
+        0.999, np.maximum(state.d_mt, np.where(active_mt, d_new_mt, 0.0))
     )
     state.d_mc = np.minimum(
-        1.0, np.maximum(state.d_mc, np.where(active_mc, d_new_mc, 0.0))
+        0.999, np.maximum(state.d_mc, np.where(active_mc, d_new_mc, 0.0))
     )
+
+    """
+    # 纤维拉伸触发
+    state.d_ft = np.where(hashin_trigger[0] == 1, 0.99, state.d_ft)
+    # 纤维压缩触发
+    state.d_fc = np.where(hashin_trigger[1] == 1, 0.99, state.d_fc)
+    # 基体拉伸触发
+    state.d_mt = np.where(hashin_trigger[2] == 1, 0.99, state.d_mt)
+    # 基体压缩触发
+    state.d_mc = np.where(hashin_trigger[3] == 1, 0.99, state.d_mc)
+    """
 
     d_f = np.maximum(state.d_ft, state.d_fc)
     d_m = np.maximum(state.d_mt, state.d_mc)
@@ -536,16 +551,16 @@ def analyze_failure(
     p_o,
     p_i_lim,
     nx=100,
-    dp=1e5,
-    dp_min=1e3,
+    dp=1e6,
+    dp_min=1e5,
     tol=1e-6,
     max_iter=50,
 ):
     # 如果 failure 中没有断裂能，补充默认值
-    failure.setdefault("Gft", 10e3)  # J/m^2
-    failure.setdefault("Gfc", 8.0e3)
-    failure.setdefault("Gmt", 0.3e3)
-    failure.setdefault("Gmc", 0.8e3)
+    failure.setdefault("Gft", 133e3)  # J/m^2 133e3
+    failure.setdefault("Gfc", 40e3)  # 8e3
+    failure.setdefault("Gmt", 0.6e3)
+    failure.setdefault("Gmc", 2.1e3)
 
     domain, ds = setup_domain(r_i_list)
 
@@ -556,7 +571,7 @@ def analyze_failure(
     Q, C_field = init_stiffness(domain, [C], [theta], r_i_list)
 
     # 压力循环
-    pbar = tqdm(total=p_i_lim/1e6, desc="内压加载", unit="MPa")
+    pbar = tqdm(total=p_i_lim / 1e6, desc="内压加载", unit="MPa")
     p_i = 0.0
     while p_i < p_i_lim:
         p_i += dp
@@ -564,6 +579,8 @@ def analyze_failure(
 
         pbar.n = p_i / 1e6
         pbar.refresh()
+
+        state_backup = copy.deepcopy(state)
 
         for it in range(max_iter):
             # 用当前损伤状态更新刚度场
@@ -583,7 +600,24 @@ def analyze_failure(
             )
 
             # 计算 Hashin 失效触发
-            hashin_trigger = hashin(sigma_mat, failure)  # 现在应输出 (4, nx) 0/1, 原来是nx, 4
+            hashin_trigger = hashin(
+                sigma_mat, failure
+            )  # 现在应输出 (4, nx) 0/1, 原来是nx, 4
+
+            tqdm.write(f"p={p_i / 1e6:.2f} MPa")
+            tqdm.write(
+                f"  sigma_cyl max  = [{np.max(sigma_cyl[:, 0]) / 1e6:.2f}, "
+                f"{np.max(sigma_cyl[:, 1]) / 1e6:.2f}, {np.max(sigma_cyl[:, 2]) / 1e6:.2f}, "
+                f"{np.max(sigma_cyl[:, 3]) / 1e6:.2f}, {np.max(sigma_cyl[:, 4]) / 1e6:.2f}, "
+                f"{np.max(sigma_cyl[:, 5]) / 1e6:.2f}] MPa"
+            )
+            tqdm.write(
+                f"  sigma_mat max  = [{np.max(sigma_mat[:, 0]) / 1e6:.2f}, "
+                f"{np.max(sigma_mat[:, 1]) / 1e6:.2f}, {np.max(sigma_mat[:, 2]) / 1e6:.2f}, "
+                f"{np.max(sigma_mat[:, 3]) / 1e6:.2f}, {np.max(sigma_mat[:, 4]) / 1e6:.2f}, "
+                f"{np.max(sigma_mat[:, 5]) / 1e6:.2f}] MPa"
+            )
+            tqdm.write(f"  Hashin trigger max = {np.max(hashin_trigger)}")
 
             # 保存旧损伤用于收敛判断
             old_d = (
@@ -596,6 +630,12 @@ def analyze_failure(
             # 更新损伤
             state = update_damage(state, layers, hashin_trigger, eps_mat)
 
+            tqdm.write(
+                f"p={p_i / 1e6:.2f} MPa, d_mt[0]={state.d_mt[0]:.3f}, "
+                f"d_ft[0]={state.d_ft[0]:.3f}, "
+                f"d_mt_max={np.max(state.d_mt):.3f}, d_ft_max={np.max(state.d_ft):.3f}"
+            )
+
             # 计算最大损伤变化
             delta = max(
                 np.max(np.abs(state.d_ft - old_d[0])),
@@ -605,23 +645,25 @@ def analyze_failure(
             )
             if delta < tol:
                 converged = True
+                state_backup = copy.deepcopy(state)
                 break
 
         if not converged:
             p_i -= dp  # 回退到上一步压力
             dp = max(dp / 2, dp_min)
+            state = copy.deepcopy(state_backup)
             if dp <= dp_min:
-                print(f"压力 {p_i/1e6:.2e} MPa处无法收敛，停止")
+                print(f"压力 {p_i / 1e6:.2e} MPa处无法收敛，停止")
                 pbar.close()
                 break
-            print(f"未收敛，减小增量至 {dp/1e6:.2e} MPa并重试")
+            print(f"未收敛，减小增量至 {dp / 1e6:.2e} MPa并重试")
             continue
 
         # 检查纤维贯通失效
         d_fiber = np.maximum(state.d_ft, state.d_fc)
         d_matrix = np.maximum(state.d_mt, state.d_mc)
-        if np.any(d_fiber >= 0.99) or np.any(d_matrix >= 0.99):  # 0.99
-            print(f"爆破压力 = {p_i/1e6:.3e} MPa")
+        if np.all(d_fiber >= 0.99):  # 0.99 or np.all(d_matrix >= 0.99)
+            print(f"爆破压力 = {p_i / 1e6:.3e} MPa")
             pbar.close()
             return p_i
 
@@ -631,14 +673,14 @@ def analyze_failure(
 
 
 def main():
-    C, _, r_i_list, theta, failure, name = setup_config2()
+    C, _, r_i_list, theta, failure, name = setup_config3()
     E_list, nu_list, G_list = stiffness_to_properties(C)
     assert np.allclose(C, build_stiffness(E_list, nu_list, G_list)), (
         "计算刚度矩阵不可逆"
     )
 
     p_o = 0.0
-    p_i_lim = 700.0e6
+    p_i_lim = 300.0e6
 
     p_failure = analyze_failure(C, r_i_list, theta, failure, p_o, p_i_lim, dp=5e6)
     print(f"p_failure = {p_failure / 1e6:.2f}Mpa")
