@@ -1,6 +1,6 @@
 import ufl
-from dolfinx import mesh, fem
 from basix.ufl import real_element
+from dolfinx import fem, mesh
 from mpi4py import MPI
 
 domain = mesh.create_unit_interval(MPI.COMM_WORLD, 10)
