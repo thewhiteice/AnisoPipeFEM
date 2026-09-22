@@ -449,7 +449,7 @@ def update_damage(state, layers, hashin_trigger, eps_mat):
     eps_mat: (nx, 6) 材料坐标系应变，顺序 [ε1, ε2, ε3, ε23, ε13, ε12]
     """
 
-    """    
+    """
     eps1 = eps_mat[:, 0]
     eps2 = eps_mat[:, 1]
 
@@ -508,7 +508,7 @@ def update_damage(state, layers, hashin_trigger, eps_mat):
 
     state.E1 = layers.E1 * (1.0 - d_f)
     state.E2 = layers.E2 * (1.0 - d_m)
-    state.E3 = layers.E3 * (1.0 - d_m)
+    state.E3 = layers.E3
     state.G12 = layers.G12 * (1.0 - d_s)
     state.G13 = layers.G13 * (1.0 - d_s)
     state.G23 = layers.G23 * (1.0 - d_s)
