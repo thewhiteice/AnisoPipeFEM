@@ -128,6 +128,8 @@ git config --global alias.lg "log --oneline --graph --all"
 - [ ] 代码是否至少能通过语法检查？（没有未闭合的括号、明显缩进错误等）
 - [ ] 是否误提交了敏感信息（密码、API key）或大文件？
 
+git push失败需要在password处输入Personal Access Token(PAT)，或改用ssh密钥。
+
 ---
 
 > 以上准则可根据项目实际需求调整，关键是**保持一致**。个人开发时不必拘泥于形式，但好的习惯会让三个月后的自己感谢现在的你。
