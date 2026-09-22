@@ -638,7 +638,7 @@ def analyze_failure(
 
             tqdm.write(
                 f"p={p_i / 1e6:.2f} MPa, d_mt[0] ={state.d_mt[0]:.3f}, "
-                f"d_mt[-1]={state.d_mt[0]:.3f}, "
+                f"d_mt[-1]={state.d_mt[-1]:.3f}, "
                 f"d_mt_max={np.max(state.d_mt):.3f}, d_mt_min={np.min(state.d_mt):.3f}, "
             )
 
