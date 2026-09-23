@@ -169,9 +169,15 @@ def build_transformation_matrices(angles):
 
     T[:, 5, 1] = -s * c
     T[:, 5, 2] = s * c
-    T[:, 5, 3] = c * c - s * s
+    T[:, 5, 3] = s * s - c * c
 
     return T
+
+
+def build_strain_transform(angles):
+    T = build_transformation_matrices(angles)
+    _RV = np.array([1, 1, 1, 2, 2, 2.0])  # ⼯程剪应变缩放
+    return T * _RV[None, :, None] / _RV[None, None, :]  # T_eps = R T R^-1
 
 
 def bond_transform(G, phi):
@@ -188,14 +194,14 @@ def bond_transform(G, phi):
 
     # 获取绕 r 轴的变换矩阵 T（柱→材料）
     phi_1d = np.atleast_1d(phi)
-    T = build_transformation_matrices(phi_1d)   # 形状 (..., 6, 6)
+    Te = build_strain_transform(phi_1d)  # 形状 (..., 6, 6)
 
     # 合同变换：G_cyl = T^T @ G @ T
-    G_cyl = np.einsum('...ji,...jk,...kl->...il', T, G, T)
+    G_cyl = np.einsum("...ji,...jk,...kl->...il", Te, G, Te)
 
     if phi.ndim == 0:
         G_cyl = np.squeeze(G_cyl, axis=0)
-        
+
     return G_cyl
 
 
@@ -205,11 +211,11 @@ def cyl2mat_stress_v(sigma_cyl, angles):
     angles: (nx,) 每个单元铺层角
     返回: (nx, 6) 材料主方向应力
     """
-    T = build_transformation_matrices(angles)   # (nx,6,6)
+    T = build_transformation_matrices(angles)  # (nx,6,6)
     # 批量矩阵乘法：对每个 i 计算 T[i] @ sigma_cyl[i]
-    return np.einsum('nij,nj->ni', T, sigma_cyl)
+    return np.einsum("nij,nj->ni", T, sigma_cyl)
 
 
 def cyl2mat_strain_v(eps_cyl, angles):
-    T = build_transformation_matrices(angles)
-    return np.einsum('nij,nj->ni', T, eps_cyl)
+    Te = build_strain_transform(angles)
+    return np.einsum("nij,nj->ni", Te, eps_cyl)
