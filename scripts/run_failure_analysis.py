@@ -67,16 +67,13 @@ class Damagestate:
     d_fc: np.ndarray
     d_mt: np.ndarray
     d_mc: np.ndarray
-    # 折减后的工程常数
-    E1: np.ndarray
-    E2: np.ndarray
-    E3: np.ndarray
-    G12: np.ndarray
-    G13: np.ndarray
-    G23: np.ndarray
-    nu12: np.ndarray
-    nu13: np.ndarray
-    nu23: np.ndarray
+    d_ft_v: np.ndarray
+    d_fc_v: np.ndarray
+    d_mt_v: np.ndarray
+    d_mc_v: np.ndarray
+    d_f: np.ndarray
+    d_m: np.ndarray
+    d_s: np.ndarray
 
 
 def setup_domain(r_i_list: np.ndarray, nx: int = 100):
@@ -225,15 +222,13 @@ def init_damagestate(layers: Layers) -> Damagestate:
         d_fc=np.zeros(nx),
         d_mt=np.zeros(nx),
         d_mc=np.zeros(nx),
-        E1=layers.E1.copy(),
-        E2=layers.E2.copy(),
-        E3=layers.E3.copy(),
-        G12=layers.G12.copy(),
-        G13=layers.G13.copy(),
-        G23=layers.G23.copy(),
-        nu12=layers.nu12.copy(),
-        nu13=layers.nu13.copy(),
-        nu23=layers.nu23.copy(),
+        d_ft_v=np.zeros(nx),
+        d_fc_v=np.zeros(nx),
+        d_mt_v=np.zeros(nx),
+        d_mc_v=np.zeros(nx),
+        d_f=np.zeros(nx),
+        d_m=np.zeros(nx),
+        d_s=np.zeros(nx),
     )
 
 
@@ -502,19 +497,32 @@ def update_damage(state, layers, hashin_trigger, eps_mat):
     # 基体压缩触发
     state.d_mc = np.where(hashin_trigger[3] == 1, 0.90, state.d_mc)
 
-    d_f = np.maximum(state.d_ft, state.d_fc)
-    d_m = np.maximum(state.d_mt, state.d_mc)
-    d_s = np.maximum(d_f, d_m)
-
-    state.E1 = layers.E1 * (1.0 - d_f)
-    state.E2 = layers.E2 * (1.0 - d_m)
-    state.E3 = layers.E3
-    state.G12 = layers.G12 * (1.0 - d_s)
-    state.G13 = layers.G13 * (1.0 - d_s)
-    state.G23 = layers.G23 * (1.0 - d_s)
+    state.d_f = np.maximum(state.d_ft, state.d_fc)
+    state.d_m = np.maximum(state.d_mt, state.d_mc)
+    state.d_s = np.maximum(state.d_f, state.d_m)
 
     # 损伤不可逆已经由 np.maximum 保证
     return state
+
+
+def build_damaged_stiffenss(E, nu, G, d_f, d_m, d_s):
+    E1, E2, E3 = E
+    nu12, nu13, nu23 = nu
+    G12, G13, G23 = G
+
+    S = np.array(
+        [
+            [1 / (E1 * (1 - d_f)), -nu12 / E1, -nu13 / E1, 0, 0, 0],
+            [-nu12 / E1, 1 / (E2 * (1 - d_m)), -nu23 / E2, 0, 0, 0],
+            [-nu13 / E1, -nu23 / E2, 1 / E3, 0, 0, 0],
+            [0, 0, 0, 1 / (G23 * (1 - d_s)), 0, 0],
+            [0, 0, 0, 0, 1 / (G13 * (1 - d_s)), 0],
+            [0, 0, 0, 0, 0, 1 / (G12 * (1 - d_s))],
+        ]
+    )
+
+    C = np.linalg.inv(S)
+    return C
 
 
 def update_stiffness(state, layers, Q, C):
@@ -523,10 +531,13 @@ def update_stiffness(state, layers, Q, C):
     C_arr = np.zeros((len(layers.h), 6, 6))
 
     for i in range(len(layers.h)):
-        E_list = [state.E1[i], state.E2[i], state.E3[i]]
-        nu_list = [state.nu12[i], state.nu13[i], state.nu23[i]]
-        G_list = [state.G12[i], state.G13[i], state.G23[i]]
-        C_local = build_stiffness(E_list, nu_list, G_list)
+        E = [layers.E1[i], layers.E2[i], layers.E3[i]]
+        nu = [layers.nu12[i], layers.nu13[i], layers.nu23[i]]
+        G = [layers.G12[i], layers.G13[i], layers.G23[i]]
+        d_f = state.d_f[i]
+        d_m = state.d_m[i]
+        d_s = state.d_s[i]
+        C_local = build_damaged_stiffenss(E, nu, G, d_f, d_m, d_s)
 
         C_global = bond_transform(C_local, layers.angle[i])
         C_arr[i] = C_global
@@ -623,7 +634,9 @@ def analyze_failure(
                 f"{sigma_mat[-1, 3] / 1e6:.2f}, {sigma_mat[-1, 4] / 1e6:.2f}, "
                 f"{sigma_mat[-1, 5] / 1e6:.2f}] MPa"
             )
-            tqdm.write(f"  Hashin trigger count = {np.sum(hashin_trigger, axis=1).tolist()}")
+            tqdm.write(
+                f"  Hashin trigger count = {np.sum(hashin_trigger, axis=1).tolist()}"
+            )
 
             # 保存旧损伤用于收敛判断
             old_d = (
@@ -675,8 +688,10 @@ def analyze_failure(
         d_fiber = np.maximum(state.d_ft, state.d_fc)
         d_matrix = np.maximum(state.d_mt, state.d_mc)
         if np.all(state.d_ft >= 0.90):  # 0.99 or np.all(d_matrix >= 0.99)
-            tqdm.write(f"[DEBUG] p_i={p_i/1e6:.2f} MPa, d_fiber_max={np.max(d_fiber):.4f}, "
-                       f"d_fiber_min={np.min(d_fiber):.4f}")
+            tqdm.write(
+                f"[DEBUG] p_i={p_i / 1e6:.2f} MPa, d_fiber_max={np.max(d_fiber):.4f}, "
+                f"d_fiber_min={np.min(d_fiber):.4f}"
+            )
             print(f"爆破压力 = {p_i / 1e6:.3e} MPa")
             pbar.close()
             return p_i
