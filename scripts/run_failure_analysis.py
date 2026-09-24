@@ -732,6 +732,13 @@ def normalize_failure(failure, n_layers):
 def main():
     C, _, r_i_list, theta, failure, name = setup_config2()
 
+    if name == "config2":
+        E = np.array([158.0, 9.78, 9.78]) * 1.0e9
+        nu = np.array([0.241, 0.241, 0.310])
+        G = np.array([5.25, 5.25, 3.05]) * 1.0e9
+        C = build_stiffness(E, nu, G)
+        C = C[None, :, :]
+
     p_o = 0.0
     p_i_lim = 300.0e6
     # theta = np.deg2rad(0)
