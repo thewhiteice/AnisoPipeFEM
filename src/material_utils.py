@@ -219,3 +219,65 @@ def cyl2mat_stress_v(sigma_cyl, angles):
 def cyl2mat_strain_v(eps_cyl, angles):
     Te = build_strain_transform(angles)
     return np.einsum("nij,nj->ni", Te, eps_cyl)
+
+
+# FWC平板到SLC平板
+def fwc2clt_stiffness(C, angle):
+    """
+    修复面内交叉缠绕层
+    """
+    E_list, nu_list, G_list = stiffness_to_properties(C)
+    E1, E2, E3 = E_list
+    nu12, nu13, nu23 = nu_list
+    G12, G13, G23 = G_list
+
+    assert np.isclose(E2, E3), f"E2应等于E3,E1={E1},E2={E2}, E3={E2}"
+    assert np.isclose(nu12, nu13), (
+        f"nu12应等于nu13, nu12={nu12}, nu13={nu13}, nu23={nu23}"
+    )
+    assert np.isclose(G12, G13), f"G12应等于G13, G12={G12}, G13={G13}, G23={G23}"
+
+    nu21 = nu12 * E2 / E1
+    Q11 = E1 / (1 - nu12 * nu21)
+    Q22 = E2 / (1 - nu12 * nu21)
+    Q12 = nu12 * E2 / (1 - nu12 * nu21)
+    Q66 = G12
+
+    t = angle
+    _Q11 = (
+        Q11 * np.cos(t) ** 4
+        + 2 * (Q12 + 2 * Q66) * np.sin(t) ** 2 * np.cos(t) ** 2
+        + Q22 * np.sin(t) ** 4
+    )
+    _Q22 = (
+        Q11 * np.sin(t) ** 4
+        + 2 * (Q12 + 2 * Q66) * np.sin(t) ** 2 * np.cos(t) ** 2
+        + Q22 * np.cos(t) ** 4
+    )
+    _Q12 = (Q11 + Q22 - 4 * Q66) * np.sin(t) ** 2 * np.cos(t) ** 2 + Q12 * (
+        np.sin(t) ** 4 + np.cos(t) ** 4
+    )
+    _Q66 = (Q11 + Q22 - 2 * Q12 - 2 * Q66) * np.sin(t) ** 2 * np.cos(t) ** 2 + Q66 * (
+        np.sin(t) ** 4 + np.cos(t) ** 4
+    )
+
+    Q_eq = np.array([[_Q11, _Q12, 0], [_Q12, _Q22, 0], [0, 0, _Q66]])
+
+    S_eq = np.linalg.inv(Q_eq)
+    S11 = S_eq[0, 0]
+    S22 = S_eq[1, 1]
+    S12 = S_eq[0, 1]
+    S66 = S_eq[2, 2]
+
+    _Ex = 1.0 / S11
+    _Ey = 1.0 / S22
+    _Gxy = 1.0 / S66
+    _nuxy = -S12 / S11
+
+    _E_list = np.array([_Ex, _Ey, E3])
+    _nu_list = np.array([_nuxy, nu13, nu23])
+    _G_list = np.array([_Gxy, G13, G23])
+
+    _C = build_stiffness(_E_list, _nu_list, _G_list)
+
+    return _C
