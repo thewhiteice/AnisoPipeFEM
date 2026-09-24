@@ -62,10 +62,10 @@ def setup_config1():
     theta_rad_list = np.deg2rad(theta_deg_list)
 
     failure = {
-        "Xt": 2860.0e6,  # 纵向拉伸强度 pa
-        "Xc": 1450.0e6,  # 纵向压缩强度 pa
-        "Yt": 81.0e6,  # 横向拉伸强度 pa
-        "Yc": 170.0e6,  # 横向压缩强度 pa  不能确定 doubao
+        "Xt": 2180.0e6,  # 纵向拉伸强度 pa 2180.0e6
+        "Xc": 1200.0e6,  # 纵向压缩强度 pa 1200.0e6
+        "Yt": 60.0e6,  # 横向拉伸强度 pa 60.0e6
+        "Yc": 140.0e6,  # 横向压缩强度 pa  不能确定 doubao 140.0e6
         "S12": 136.0e6,  # 面内剪切强度 pa
         "S13": 136.0e6,  # 横向剪切强度 pa  不能确定
         "S23": 86.9e6,  # 横向剪切强度 pa
