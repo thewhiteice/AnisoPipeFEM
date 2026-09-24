@@ -148,7 +148,7 @@ def init_layers(r_interface_list, C_basic_list, theta_rad_list, failure_list, nx
         layer_idx[mask] = i
 
     # ---------- 提取每层的工程常数（从刚度矩阵） ----------
-    n_layers = len(C_basic_list)
+    n_layers = C_basic_list.shape[0]
     E1_l = np.zeros(n_layers)
     E2_l = np.zeros(n_layers)
     E3_l = np.zeros(n_layers)
@@ -567,19 +567,23 @@ def analyze_failure(
     tol=1e-4,
     max_iter=50,
 ):
-    # 如果 failure 中没有断裂能，补充默认值
-    failure.setdefault("Gft", 60e3)  # J/m^2 133e3
-    failure.setdefault("Gfc", 40e3)  # 8e3
-    failure.setdefault("Gmt", 0.6e3)
-    failure.setdefault("Gmc", 2.1e3)
 
     domain, ds = setup_domain(r_i_list)
 
-    layers = init_layers(r_i_list, [C], [theta], [failure], nx)
+    layers = init_layers(r_i_list, C, theta, failure, nx)
+    criteria = {
+        "Xt": layers.XT,
+        "Xc": layers.XC,
+        "Yt": layers.YT,
+        "Yc": layers.YC,
+        "S12": layers.S12,
+        "S13": layers.S13,
+        "S23": layers.S23,
+    }
 
     state = init_damagestate(layers)
 
-    Q, C_field = init_stiffness(domain, [C], [theta], r_i_list)
+    Q, C_field = init_stiffness(domain, C, theta, r_i_list)
 
     # 压力循环
     pbar = tqdm(total=p_i_lim / 1e6, desc="内压加载", unit="MPa")
@@ -612,7 +616,7 @@ def analyze_failure(
 
             # 计算 Hashin 失效触发
             hashin_trigger = hashin(
-                sigma_mat, failure
+                sigma_mat, criteria
             )  # 现在应输出 (4, nx) 0/1, 原来是nx, 4
 
             tqdm.write(f"p={p_i / 1e6:.2f} MPa")
@@ -701,6 +705,30 @@ def analyze_failure(
     return p_i
 
 
+def normalize_failure(failure, n_layers):
+    if isinstance(failure, dict):
+        failure = [failure]
+
+    if not isinstance(failure, (list, tuple)):
+        raise TypeError("failure 必须是 dict 或 list[dict]")
+
+    if len(failure) == 1 and n_layers > 1:
+        failure = [dict(failure[0]) for _ in range(n_layers)]
+        # 或 failure = failure * n_layers，但要注意浅拷贝问题
+
+    if len(failure) != n_layers:
+        raise ValueError(f"failure 层数 {len(failure)} 与材料层数 {n_layers} 不一致")
+
+    # 如果 failure 中没有断裂能，补充默认值
+    for f in failure:
+        f.setdefault("Gft", 60e3)
+        f.setdefault("Gfc", 40e3)
+        f.setdefault("Gmt", 0.6e3)
+        f.setdefault("Gmc", 2.1e3)
+
+    return failure
+
+
 def main():
     C, _, r_i_list, theta, failure, name = setup_config2()
     E_list, nu_list, G_list = stiffness_to_properties(C)
@@ -711,6 +739,11 @@ def main():
     p_o = 0.0
     p_i_lim = 300.0e6
     # theta = np.deg2rad(0)
+
+    theta = np.atleast_1d(theta)
+
+    n_layers = len(r_i_list) - 1
+    failure = normalize_failure(failure, n_layers)
 
     p_failure = analyze_failure(C, r_i_list, theta, failure, p_o, p_i_lim, dp=5e6)
     print(f"p_failure = {p_failure / 1e6:.2f}Mpa")

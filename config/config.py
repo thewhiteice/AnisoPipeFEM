@@ -71,6 +71,9 @@ def setup_config1():
         "S23": 86.9e6,  # 横向剪切强度 pa
     }
 
+    failure = [failure, failure, failure]
+    # failure = [failure.copy() for _ in range(3)]
+
     return C_list, C_edit_list, r_interface_list, theta_rad_list, failure, "config1"
 
 
@@ -119,6 +122,7 @@ def setup_config2():
 
     r_interface_list = np.array([191.0e-3, 191.0e-3 + 30.0e-3])  # (m)
     theta = np.deg2rad(12)
+    theta = np.atleast_1d(theta)
 
     failure = {
         "Xt": 2180.0e6,  # 纵向拉伸强度 pa 2180.0e6
@@ -130,7 +134,14 @@ def setup_config2():
         "S23": 86.9e6,  # 横向剪切强度 pa
     }
 
-    return C, C_edit, r_interface_list, theta, failure, "config2"
+    return (
+        C[None, :, :],
+        C_edit[None, :, :],
+        r_interface_list,
+        theta,
+        [failure],
+        "config2",
+    )
 
 
 def setup_config3():
@@ -177,6 +188,7 @@ def setup_config3():
 
     r_interface_list = np.array([191.0e-3, 191.0e-3 + 30.0e-3])  # (m)
     theta = np.deg2rad(90)
+    theta = np.atleast_1d(theta)
 
     failure = {
         "Xt": 2180.0e6,  # 纵向拉伸强度 pa 2180.0e6
@@ -188,7 +200,14 @@ def setup_config3():
         "S23": 86.9e6,  # 横向剪切强度 pa
     }
 
-    return C, C_edit, r_interface_list, theta, failure, "config3"
+    return (
+        C[None, :, :],
+        C_edit[None, :, :],
+        r_interface_list,
+        theta,
+        [failure],
+        "config3",
+    )
 
 
 def setup_config4():
@@ -224,7 +243,7 @@ def setup_config4():
     G_list = np.array([5.24e9, 5.24e9, G23])
 
     C = build_stiffness(E_list, nu_list, G_list)
-    C_list = np.full(len(theta_rad_list), C)
+    C_list = np.array([C] * num_layers)
 
     failure = {
         "Xt": 2326.0e6,  # 纵向拉伸强度 pa
@@ -235,5 +254,6 @@ def setup_config4():
         "S13": 87.9e6,  # 横向剪切强度 pa  不能确定
         "S23": 99.2e6,  # 横向剪切强度 pa
     }
+    failure = [failure.copy() for _ in range(num_layers)]
 
-    return C_list, r_interface_list, theta_rad_list, failure, "config4"
+    return C_list, C_list, r_interface_list, theta_rad_list, failure, "config4"
