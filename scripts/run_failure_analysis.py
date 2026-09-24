@@ -10,7 +10,7 @@ from dolfinx.mesh import locate_entities_boundary, meshtags
 from mpi4py import MPI
 from tqdm import tqdm
 
-from config.config import setup_config1, setup_config2, setup_config3
+from config.config import setup_config1, setup_config2, setup_config3, setup_config4
 from src.failure_criteria import hashin
 from src.material_utils import (
     bond_transform,
