@@ -97,17 +97,11 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
 
     # 纤维拉伸失效 s_11 >= 0
     L1 = np.where(
-        s_1 >= 0,
-        (s_1 / Xt) ** 2 + (t_12 / S12) ** 2 + (t_13 / S13) ** 2,
-        0.0
+        s_1 >= 0, (s_1 / Xt) ** 2 + (t_12 / S12) ** 2 + (t_13 / S13) ** 2, 0.0
     )
 
     # 纤维压缩失效 s_11 < 0
-    L2 = np.where(
-        s_1 < 0,
-        (s_1 / Xc) ** 2,
-        0.0
-    )
+    L2 = np.where(s_1 < 0, (s_1 / Xc) ** 2, 0.0)
 
     # 基体拉伸失效 s_22 + s_33 >= 0
     L3 = np.where(
@@ -116,7 +110,7 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
         + (t_23**2 - s_2 * s_3) / S23**2
         + (t_12 / S12) ** 2
         + (t_13 / S13) ** 2,
-        0.0
+        0.0,
     )
 
     # 基体压缩失效 s_22 + s_33 < 0
@@ -127,7 +121,7 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
         + (t_23**2 - s_2 * s_3) / S23**2
         + (t_12 / S12) ** 2
         + (t_13 / S13) ** 2,
-        0.0
+        0.0,
     )
 
     L = np.stack([L1, L2, L3, L4], axis=0)  #
