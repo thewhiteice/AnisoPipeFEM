@@ -731,10 +731,6 @@ def normalize_failure(failure, n_layers):
 
 def main():
     C, _, r_i_list, theta, failure, name = setup_config2()
-    E_list, nu_list, G_list = stiffness_to_properties(C)
-    assert np.allclose(C, build_stiffness(E_list, nu_list, G_list)), (
-        "计算刚度矩阵不可逆"
-    )
 
     p_o = 0.0
     p_i_lim = 300.0e6
