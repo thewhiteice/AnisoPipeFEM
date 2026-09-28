@@ -568,7 +568,7 @@ def analyze_failure(
     max_iter=50,
 ):
 
-    domain, ds = setup_domain(r_i_list)
+    domain, ds = setup_domain(r_i_list, nx)
 
     layers = init_layers(r_i_list, C, theta, failure, nx)
     criteria = {
