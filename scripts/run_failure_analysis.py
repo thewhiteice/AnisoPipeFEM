@@ -436,7 +436,7 @@ def solve_step(domain, ds, C, Q, p_i, p_o, r_i, r_o, angles):
     return u_vals, sigma_cyl, eps_cyl, sigma_mat, eps_mat
 
 
-def update_damage(state, layers, hashin_trigger, eps_mat):
+def update_damage(state, layers, hashin_trigger, eps_mat, d_limit):
     """
     state: Damagestate, 原地更新
     layers: Layers, 原始材料参数
@@ -489,13 +489,13 @@ def update_damage(state, layers, hashin_trigger, eps_mat):
     """
 
     # 纤维拉伸触发
-    state.d_ft = np.where(hashin_trigger[0] == 1, 0.90, state.d_ft)
+    state.d_ft = np.where(hashin_trigger[0] == 1, d_limit, state.d_ft)
     # 纤维压缩触发
-    state.d_fc = np.where(hashin_trigger[1] == 1, 0.90, state.d_fc)
+    state.d_fc = np.where(hashin_trigger[1] == 1, d_limit, state.d_fc)
     # 基体拉伸触发
-    state.d_mt = np.where(hashin_trigger[2] == 1, 0.90, state.d_mt)
+    state.d_mt = np.where(hashin_trigger[2] == 1, d_limit, state.d_mt)
     # 基体压缩触发
-    state.d_mc = np.where(hashin_trigger[3] == 1, 0.90, state.d_mc)
+    state.d_mc = np.where(hashin_trigger[3] == 1, d_limit, state.d_mc)
 
     state.d_f = np.maximum(state.d_ft, state.d_fc)
     state.d_m = np.maximum(state.d_mt, state.d_mc)
@@ -561,6 +561,7 @@ def analyze_failure(
     failure,
     p_o,
     p_i_lim,
+    d_limit=0.9,
     nx=100,
     dp=1e6,
     dp_min=1e5,
@@ -651,7 +652,7 @@ def analyze_failure(
             )
 
             # 更新损伤
-            state = update_damage(state, layers, hashin_trigger, eps_mat)
+            state = update_damage(state, layers, hashin_trigger, eps_mat, d_limit)
 
             tqdm.write(
                 f"p={p_i / 1e6:.2f} MPa, d_mt[0] ={state.d_mt[0]:.3f}, "
@@ -664,6 +665,7 @@ def analyze_failure(
                 f"d_ft[-1]={state.d_ft[-1]:.3f}, "
                 f"d_ft_max={np.max(state.d_ft):.3f}, d_ft_min={np.min(state.d_ft):.3f}"
             )
+            tqdm.write(f"Num of d_ft >= d_limit: {np.sum(state.d_ft >= d_limit)}")
 
             # 计算最大损伤变化
             delta = max(
@@ -691,7 +693,7 @@ def analyze_failure(
         # 检查纤维贯通失效
         d_fiber = np.maximum(state.d_ft, state.d_fc)
         d_matrix = np.maximum(state.d_mt, state.d_mc)
-        if np.all(state.d_ft >= 0.90):  # 0.99 or np.all(d_matrix >= 0.99)
+        if np.all(state.d_ft >= d_limit):  # 0.99 or np.all(d_matrix >= 0.99)
             tqdm.write(
                 f"[DEBUG] p_i={p_i / 1e6:.2f} MPa, d_fiber_max={np.max(d_fiber):.4f}, "
                 f"d_fiber_min={np.min(d_fiber):.4f}"
@@ -748,7 +750,7 @@ def main():
     n_layers = len(r_i_list) - 1
     failure = normalize_failure(failure, n_layers)
 
-    p_failure = analyze_failure(C, r_i_list, theta, failure, p_o, p_i_lim, dp=5e6)
+    p_failure = analyze_failure(C, r_i_list, theta, failure, p_o, p_i_lim, nx=nx, dp=5e6)
     print(f"p_failure = {p_failure / 1e6:.2f}Mpa")
 
 
