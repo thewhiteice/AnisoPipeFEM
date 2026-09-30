@@ -10,11 +10,10 @@ from dolfinx.mesh import locate_entities_boundary, meshtags
 from mpi4py import MPI
 from tqdm import tqdm
 
-from config.config import setup_config1, setup_config2, setup_config3, setup_config4
+import config.config as config_list
 from src.failure_criteria import hashin
 from src.material_utils import (
     bond_transform,
-    build_stiffness,
     cyl2mat_strain_v,
     cyl2mat_stress_v,
     stiffness_to_properties,
@@ -732,25 +731,20 @@ def normalize_failure(failure, n_layers):
 
 
 def main():
-    C, _, r_i_list, theta, failure, name = setup_config2()
-
-    if name == "config2":
-        E = np.array([158.0, 9.78, 9.78]) * 1.0e9
-        nu = np.array([0.241, 0.241, 0.310])
-        G = np.array([5.25, 5.25, 3.05]) * 1.0e9
-        C = build_stiffness(E, nu, G)
-        C = C[None, :, :]
+    C, _, r_i_list, theta, failure, name = config_list.setup_config2()
 
     p_o = 0.0
     p_i_lim = 300.0e6
-    # theta = np.deg2rad(0)
 
     theta = np.atleast_1d(theta)
 
     n_layers = len(r_i_list) - 1
     failure = normalize_failure(failure, n_layers)
+    nx = max(n_layers * 30, 100)
 
-    p_failure = analyze_failure(C, r_i_list, theta, failure, p_o, p_i_lim, nx=nx, dp=5e6)
+    p_failure = analyze_failure(
+        C, r_i_list, theta, failure, p_o, p_i_lim, nx=nx, dp=5e6
+    )
     print(f"p_failure = {p_failure / 1e6:.2f}Mpa")
 
 
