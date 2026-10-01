@@ -1,0 +1,30 @@
+name: defaultIII
+
+geometry:
+  inner_radius: 0.328
+
+materials:
+  M1:
+    stiffness:
+      type: matrix
+      scale: 1.0e9
+      C:
+        - [159.9998, 3.3195, 3.8702, 0, 0, 0]
+        - [3.3195, 10.4519, 2.5826, 0, 0, 0]
+        - [3.8702, 2.5826, 10.4767, 0, 0, 0]
+        - [0, 0, 0, 5.25, 0, 0]
+        - [0, 0, 0, 0, 3.05, 0]
+        - [0, 0, 0, 0, 0, 5.25]
+    failure:
+      Xt: 2180.0e6
+      Xc: 1200.0e6
+      Yt: 60.0e6
+      Yc: 140.0e6
+      S12: 136.0e6
+      S13: 136.0e6
+      S23: 86.9e6
+
+layup:
+  - {angles_deg: [90.0], thickness: 0.010, material: M1}
+  - {angles_deg: [12.0], thickness: 0.004, material: M1}
+  - {angles_deg: [67.0], thickness: 0.003, material: M1}

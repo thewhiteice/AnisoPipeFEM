@@ -1,0 +1,30 @@
+name: 康凯2022-工况1
+slug: kangkai_2022_case1
+
+geometry:
+  inner_radius: 81.5e-3
+
+materials:
+  M1:
+    stiffness:
+      type: engineering
+      scale: 1.0e9
+      E: [134.0, 7.42, 7.42]
+      nu: [0.28, 0.28, 0.30]
+      G: [3.71, 3.71, 4.79]
+    failure:
+      Xt: 1950.0e6
+      Xc: 1250.0e6
+      Yt: 74.0e6
+      Yc: 180.0e6
+      S12: 50.0e6
+      S13: 50.0e6
+      S23: 50.0e6
+
+layup:
+  - {angles_deg: [11.0, -11.0], repeat: 2,  thickness: 0.2e-3, material: M1}
+  - {angles_deg: [90.0],        repeat: 6,  thickness: 0.2e-3, material: M1}
+  - {angles_deg: [11.0, -11.0], repeat: 2,  thickness: 0.2e-3, material: M1}
+  - {angles_deg: [90.0],        repeat: 6,  thickness: 0.2e-3, material: M1}
+  - {angles_deg: [11.0, -11.0], repeat: 1,  thickness: 0.2e-3, material: M1}
+  - {angles_deg: [90.0],        repeat: 2,  thickness: 0.2e-3, material: M1}

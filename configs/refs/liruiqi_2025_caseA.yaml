@@ -1,0 +1,32 @@
+name: 李瑞奇2025-工况A
+slug: liruiqi_2025_caseA
+
+geometry:
+  inner_radius: 82.0e-3
+
+materials:
+  M1:
+    stiffness:
+      type: engineering
+      scale: 1.0e9
+      E: [154.0, 11.4, 11.4]
+      nu: [0.3, 0.3, 0.33]
+      G: [4.8, 4.8, 3.8]
+    failure:
+      Xt: 2500.0e6
+      Xc: 1200.0e6
+      Yt: 70.0e6
+      Yc: 180.0e6
+      S12: 50.0e6
+      S13: 90.0e6
+      S23: 90.0e6
+
+layup:
+  - {angles_deg: [14.0, -14.0], thickness: 0.25e-3, material: M1}
+  - {angles_deg: [90.0, -90.0], thickness: 0.25e-3, material: M1}
+  - {angles_deg: [90.0, -90.0], thickness: 0.25e-3, material: M1}
+  - {angles_deg: [25.0, -25.0], thickness: 0.25e-3, material: M1}
+  - {angles_deg: [90.0, -90.0], thickness: 0.25e-3, material: M1}
+  - {angles_deg: [35.0, -35.0], thickness: 0.25e-3, material: M1}
+  - {angles_deg: [90.0, -90.0], thickness: 0.25e-3, material: M1}
+  - {angles_deg: [14.0, -14.0], thickness: 0.2e-3, material: M1}
