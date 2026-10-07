@@ -10,14 +10,15 @@ from dolfinx.mesh import locate_entities_boundary, meshtags
 from mpi4py import MPI
 from tqdm import tqdm
 
-import config.config as config_list
 from src.failure_criteria import hashin
+from src.io_utils import load_config
 from src.material_utils import (
     bond_transform,
     cyl2mat_strain_v,
     cyl2mat_stress_v,
     stiffness_to_properties,
 )
+from src.paths import CONFIG_DIR
 
 
 @dataclass
@@ -651,19 +652,17 @@ def normalize_failure(failure, n_layers):
 
 
 def main():
-    C, _, r_i_list, theta, failure, name = config_list.setup_config5()
+    path = CONFIG_DIR / "refs" / "kangkai_2022_case1.yaml"
+    C_list, r_i_list, theta_list, failure, name, slug = load_config(path)
 
     p_o = 0.0
     p_i_lim = 300.0e6
 
-    theta = np.atleast_1d(theta)
-
     n_layers = len(r_i_list) - 1
-    failure = normalize_failure(failure, n_layers)
     nx = max(n_layers * 3, 100)
 
     _, history = analyze_failure(
-        C, r_i_list, theta, failure, p_o, p_i_lim, nx=nx, dp=5e6
+        C_list, r_i_list, theta_list, failure, p_o, p_i_lim, nx=nx, dp=5e6
     )
 
     p_burst, ratio = find_knee(history)
