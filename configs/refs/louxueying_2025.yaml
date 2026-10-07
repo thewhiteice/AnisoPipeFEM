@@ -8,18 +8,18 @@ materials:
   M1:
     stiffness:
       type: engineering
-      scale: 1.0e9
+      scale: 1.0e+9
       E: [160.0, 7.42, 7.42]
       nu: [0.28, 0.28, 0.30]
       G: [3.71, 3.71, 4.79]
     failure:
-      Xt: 2500.0e6
-      Xc: 1250.0e6
-      Yt: 74.0e6
-      Yc: 180.0e6
-      S12: 50.0e6
-      S13: 90.0e6
-      S23: 90.0e6
+      Xt: 2500.0e+6
+      Xc: 1250.0e+6
+      Yt: 74.0e+6
+      Yc: 180.0e+6
+      S12: 50.0e+6
+      S13: 90.0e+6
+      S23: 90.0e+6
 
 layup:
   - {angles_deg: [11.0, -11.0], repeat: 2,  thickness: 0.2e-3, material: M1}
