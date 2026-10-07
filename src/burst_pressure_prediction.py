@@ -651,7 +651,7 @@ def normalize_failure(failure, n_layers):
     return failure
 
 
-def predict_burst_pressure(config_path, **overrides):
+def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.e6, **overrides):
     """
     运行单次求解，返回数值结果。
     config_path: YAML 路径
@@ -674,8 +674,8 @@ def predict_burst_pressure(config_path, **overrides):
         theta_list,
         failure,
         p_o=0.0,
-        p_i_lim=300.0e6,
-        d_limit=0.9,
+        p_i_lim=p_i_lim,
+        d_limit=d_limit,
         nx=nx,
         dp=5e6,
         debug=False,
