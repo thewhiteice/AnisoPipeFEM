@@ -23,7 +23,10 @@ def main():
             r["scanned_param"] = param
             r["scanned_value"] = v
             results.append(r)
-            print(f"[{r['slug']}] {param}={v:.3e} -> {r['p_burst_MPa']:.2f} MPa")
+            if r["p_burst_MPa"] is None:
+                print(f"[{r['slug']}] {param}={v:.3e} -> no knee")
+            else:
+                print(f"[{r['slug']}] {param}={v:.3e} -> {r['p_burst_MPa']:.2f} MPa")
 
         slug = path.stem
         out_dir = make_result_dir(RESULT_DIR / "scan", slug, subdir=subdir)

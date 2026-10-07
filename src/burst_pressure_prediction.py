@@ -612,11 +612,13 @@ def analyze_failure(
 
         # 检查纤维贯通失效
         history.append((p_i, u_vals[0], int(np.sum(state.d_ft >= 0.90))))
-        if debug and np.all(state.d_ft >= d_limit):
-            tqdm.write(f"爆破压力 = {p_i / 1e6:.3e} MPa")
+        if np.all(state.d_ft >= d_limit):
+            p_predict = p_i
+            if debug:
+                tqdm.write(f"爆破压力 = {p_i / 1e6:.3e} MPa")
 
     pbar.close()
-    return p_i, history
+    return p_predict, history
 
 
 def find_knee(history):
@@ -668,7 +670,7 @@ def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.e6, **overrides
     n_layers = len(r_i_list) - 1
     nx = max(n_layers * 3, 100)
 
-    _, history = analyze_failure(
+    p_pre, history = analyze_failure(
         C_list,
         r_i_list,
         theta_list,
@@ -686,9 +688,9 @@ def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.e6, **overrides
     return {
         "name": name,
         "slug": slug,
-        "p_burst": float(p_burst),  # Pa
-        "p_burst_MPa": float(p_burst) / 1e6,
-        "ratio": float(ratio),
+        "p_burst": float(p_burst) if p_burst is not None else None,
+        "p_burst_MPa": float(p_burst) / 1e6 if p_burst is not None else None,
+        "ratio": float(ratio) if ratio is not None else None,
         "overrides": dict(overrides),
     }
 
