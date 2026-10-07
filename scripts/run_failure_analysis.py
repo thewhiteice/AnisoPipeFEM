@@ -485,6 +485,7 @@ def analyze_failure(
     dp_min=1e5,
     tol=1e-4,
     max_iter=50,
+    debug=False,
 ):
 
     domain, ds = setup_domain(r_i_list, nx)
@@ -537,29 +538,6 @@ def analyze_failure(
             # 计算 Hashin 失效触发
             hashin_trigger = hashin(sigma_mat, criteria)  # 输出 (4, nx) 0/1
 
-            tqdm.write(f"p={p_i / 1e6:.2f} MPa")
-            tqdm.write(
-                f"  sigma_cyl max   = [{np.max(sigma_cyl[:, 0]) / 1e6:.2f}, "
-                f"{np.max(sigma_cyl[:, 1]) / 1e6:.2f}, {np.max(sigma_cyl[:, 2]) / 1e6:.2f}, "
-                f"{np.max(sigma_cyl[:, 3]) / 1e6:.2f}, {np.max(sigma_cyl[:, 4]) / 1e6:.2f}, "
-                f"{np.max(sigma_cyl[:, 5]) / 1e6:.2f}] MPa"
-            )
-            tqdm.write(
-                f"  sigma_mat [0]   = [{np.max(sigma_mat[0, 0]) / 1e6:.2f}, "
-                f"{sigma_mat[0, 1] / 1e6:.2f}, {sigma_mat[0, 2] / 1e6:.2f}, "
-                f"{sigma_mat[0, 3] / 1e6:.2f}, {sigma_mat[0, 4] / 1e6:.2f}, "
-                f"{sigma_mat[0, 5] / 1e6:.2f}] MPa"
-            )
-            tqdm.write(
-                f"  sigma_mat [-1]  = [{sigma_mat[-1, 0] / 1e6:.2f}, "
-                f"{sigma_mat[-1, 1] / 1e6:.2f}, {sigma_mat[-1, 2] / 1e6:.2f}, "
-                f"{sigma_mat[-1, 3] / 1e6:.2f}, {sigma_mat[-1, 4] / 1e6:.2f}, "
-                f"{sigma_mat[-1, 5] / 1e6:.2f}] MPa"
-            )
-            tqdm.write(
-                f"  Hashin trigger count = {np.sum(hashin_trigger, axis=1).tolist()}"
-            )
-
             # 保存旧损伤用于收敛判断
             old_d = (
                 state.d_ft.copy(),
@@ -571,18 +549,40 @@ def analyze_failure(
             # 更新损伤
             state = update_damage(state, hashin_trigger, d_limit)
 
-            tqdm.write(
-                f"p={p_i / 1e6:.2f} MPa, d_mt[0] ={state.d_mt[0]:.3f}, "
-                f"d_mt[-1]={state.d_mt[-1]:.3f}, "
-                f"d_mt_max={np.max(state.d_mt):.3f}, d_mt_min={np.min(state.d_mt):.3f}, "
-            )
-
-            tqdm.write(
-                f"p={p_i / 1e6:.2f} MPa, d_ft[0] ={state.d_ft[0]:.3f}, "
-                f"d_ft[-1]={state.d_ft[-1]:.3f}, "
-                f"d_ft_max={np.max(state.d_ft):.3f}, d_ft_min={np.min(state.d_ft):.3f}"
-            )
-            tqdm.write(f"Num of d_ft >= d_limit: {np.sum(state.d_ft >= d_limit)}")
+            if debug:
+                tqdm.write(f"p={p_i / 1e6:.2f} MPa")
+                tqdm.write(
+                    f"  sigma_cyl max   = [{np.max(sigma_cyl[:, 0]) / 1e6:.2f}, "
+                    f"{np.max(sigma_cyl[:, 1]) / 1e6:.2f}, {np.max(sigma_cyl[:, 2]) / 1e6:.2f}, "
+                    f"{np.max(sigma_cyl[:, 3]) / 1e6:.2f}, {np.max(sigma_cyl[:, 4]) / 1e6:.2f}, "
+                    f"{np.max(sigma_cyl[:, 5]) / 1e6:.2f}] MPa"
+                )
+                tqdm.write(
+                    f"  sigma_mat [0]   = [{np.max(sigma_mat[0, 0]) / 1e6:.2f}, "
+                    f"{sigma_mat[0, 1] / 1e6:.2f}, {sigma_mat[0, 2] / 1e6:.2f}, "
+                    f"{sigma_mat[0, 3] / 1e6:.2f}, {sigma_mat[0, 4] / 1e6:.2f}, "
+                    f"{sigma_mat[0, 5] / 1e6:.2f}] MPa"
+                )
+                tqdm.write(
+                    f"  sigma_mat [-1]  = [{sigma_mat[-1, 0] / 1e6:.2f}, "
+                    f"{sigma_mat[-1, 1] / 1e6:.2f}, {sigma_mat[-1, 2] / 1e6:.2f}, "
+                    f"{sigma_mat[-1, 3] / 1e6:.2f}, {sigma_mat[-1, 4] / 1e6:.2f}, "
+                    f"{sigma_mat[-1, 5] / 1e6:.2f}] MPa"
+                )
+                tqdm.write(
+                    f"  Hashin trigger count = {np.sum(hashin_trigger, axis=1).tolist()}"
+                )
+                tqdm.write(
+                    f"p={p_i / 1e6:.2f} MPa, d_mt[0] ={state.d_mt[0]:.3f}, "
+                    f"d_mt[-1]={state.d_mt[-1]:.3f}, "
+                    f"d_mt_max={np.max(state.d_mt):.3f}, d_mt_min={np.min(state.d_mt):.3f}, "
+                )
+                tqdm.write(
+                    f"p={p_i / 1e6:.2f} MPa, d_ft[0] ={state.d_ft[0]:.3f}, "
+                    f"d_ft[-1]={state.d_ft[-1]:.3f}, "
+                    f"d_ft_max={np.max(state.d_ft):.3f}, d_ft_min={np.min(state.d_ft):.3f}"
+                )
+                tqdm.write(f"Num of d_ft >= d_limit: {np.sum(state.d_ft >= d_limit)}")
 
             # 计算最大损伤变化
             delta = max(
@@ -601,15 +601,17 @@ def analyze_failure(
             dp = max(dp / 2, dp_min)
             state = copy.deepcopy(state_backup)
             if dp <= dp_min:
-                print(f"压力 {p_i / 1e6:.2e} MPa处无法收敛，停止")
+                if debug:
+                    tqdm.write(f"压力 {p_i / 1e6:.2e} MPa处无法收敛，停止")
                 pbar.close()
                 break
-            print(f"未收敛，减小增量至 {dp / 1e6:.2e} MPa并重试")
+            if debug:
+                tqdm.write(f"未收敛，减小增量至 {dp / 1e6:.2e} MPa并重试")
             continue
 
         # 检查纤维贯通失效
         history.append((p_i, u_vals[0], int(np.sum(state.d_ft >= 0.90))))
-        if np.all(state.d_ft >= d_limit):
+        if debug and np.all(state.d_ft >= d_limit):
             tqdm.write(f"爆破压力 = {p_i / 1e6:.3e} MPa")
 
     pbar.close()
