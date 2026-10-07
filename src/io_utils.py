@@ -2,9 +2,14 @@
 读取设置及保存结果工具文件
     _build_C_from_yaml()    根据YAML设置构建刚度矩阵
     load_config()           读取单个 YAML 配置文件
+    make_result_dir()       创建结果文件夹
+    save_json()             保存JSON
+    save_fig()              保存图片
 """
 
 import copy
+import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -93,3 +98,19 @@ def load_config(path):
     r_interface_list = np.concatenate(([r_i], r_i + np.cumsum(thicknesses)))
 
     return C_list, r_interface_list, theta_rad_list, failure, name, slug
+
+
+def make_result_dir(root, slug, subdir=""):
+    ts = time.strftime()("%Y%m%d_%H%M%S")
+    out = Path(root) / subdir / f"{slug}_{ts}"
+    out.mkdir(parents=True, exist_ok=True)
+    return out
+
+
+def save_json(out_dir, data, filename="result.json"):
+    with open(Path(out_dir) / filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def save_fig(out_dir, fig, filename):
+    fig.savefig(Path(out_dir) / filename, dpi=300, bbox_inches="tight")
