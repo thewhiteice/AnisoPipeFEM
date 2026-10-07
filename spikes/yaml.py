@@ -15,3 +15,7 @@ print(type(cfg["geometry"]["inner_radius"]))  # <class 'float'>
 print(cfg["name"])
 print(cfg["name"]["name1"])
 print(cfg["name"]["name2"])
+
+# %%
+print(type(yaml.safe_load("x: 1950.0e6")["x"]))   # str
+print(type(yaml.safe_load("x: 1950.0e+6")["x"]))  # float
