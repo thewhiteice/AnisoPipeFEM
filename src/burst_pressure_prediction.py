@@ -651,22 +651,52 @@ def normalize_failure(failure, n_layers):
     return failure
 
 
-def main():
-    path = CONFIG_DIR / "refs" / "kangkai_2022_case1.yaml"
-    C_list, r_i_list, theta_list, failure, name, slug = load_config(path)
+def predict_burst_pressure(config_path, **overrides):
+    """
+    运行单次求解，返回数值结果。
+    config_path: YAML 路径
+    overrides: 覆盖材料失效参数，如 S12=1.0e8
+    """
+    C_list, r_i_list, theta_list, failure, name, slug = load_config(config_path)
 
-    p_o = 0.0
-    p_i_lim = 300.0e6
+    # 覆盖 failure 参数
+    for f in failure:
+        for k, v in overrides.items():
+            if k in f:
+                f[k] = v
 
     n_layers = len(r_i_list) - 1
     nx = max(n_layers * 3, 100)
 
     _, history = analyze_failure(
-        C_list, r_i_list, theta_list, failure, p_o, p_i_lim, nx=nx, dp=5e6
+        C_list,
+        r_i_list,
+        theta_list,
+        failure,
+        p_o=0.0,
+        p_i_lim=300.0e6,
+        d_limit=0.9,
+        nx=nx,
+        dp=5e6,
+        debug=False,
     )
 
     p_burst, ratio = find_knee(history)
-    print(f"p_burst = {p_burst / 1e6:.2f} MPa, 柔度跳变 ×{ratio:.1f}")
+
+    return {
+        "name": name,
+        "slug": slug,
+        "p_burst": float(p_burst),  # Pa
+        "p_burst_MPa": float(p_burst) / 1e6,
+        "ratio": float(ratio),
+        "overrides": dict(overrides),
+    }
+
+
+def main():
+    path = CONFIG_DIR / "refs" / "kangkai_2022_case1.yaml"
+    res = predict_burst_pressure(path)
+    print(f"p_burst = {res['p_burst_MPa']:.2f} MPa, 柔度跳变 ×{res['ratio']:.1f}")
 
 
 if __name__ == "__main__":
