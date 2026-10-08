@@ -69,8 +69,7 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
     三维 Hashin 应力失效准则 (纤维/基体分离模式)
 
     表达式:
-      ...
-      Zt, Zc = Yt, Yc
+      三维 Hashin 横向同性假设：Zt = Yt, Zc = Yc
 
     参数:
       应力分量 $sigma$ = [s1, s2, s3, t23, t13, t12]
@@ -82,7 +81,6 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
     Xc = criteria["Xc"]  # 压缩强度 (正)
     Yt = criteria["Yt"]  # 拉伸强度 (正)
     Yc = criteria["Yc"]  # 压缩强度 (正)
-    Zt, Zc = Yt, Yc  # 假设横向同性
 
     S12 = criteria["S12"]  # 面内剪切
     S13 = criteria["S13"]  # 1-3 剪切
@@ -124,6 +122,6 @@ def hashin(stress_tensors: np.ndarray, criteria: dict) -> np.ndarray:
         0.0,
     )
 
-    L = np.stack([L1, L2, L3, L4], axis=0)  #
+    L = np.stack([L1, L2, L3, L4], axis=0)
 
     return (L >= 1.0).astype(int)
