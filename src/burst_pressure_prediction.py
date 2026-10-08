@@ -62,10 +62,31 @@ class Damagestate:
     d_s: np.ndarray
 
 
+def allocate_cells(lengths, nx, min_per_layer=2):
+    n_layers = len(lengths)
+    nx = max(nx, min_per_layer * n_layers)
+
+    raw = nx * lengths / lengths.sum()
+    nx_per_layer = np.floor(raw).astype(int)
+
+    # 保底
+    deficit = np.maximum(0, min_per_layer - nx_per_layer)
+    nx_per_layer += deficit
+    remaining = nx - nx_per_layer.sum()
+
+    # 用剩余额度按小数部分补齐
+    if remaining > 0:
+        frac = raw - np.floor(raw)
+        frac[nx_per_layer >= min_per_layer] = -1  # 已保底的层不再加
+        order = np.argsort(-frac)[:remaining]
+        nx_per_layer[order] += 1
+
+    return nx_per_layer, int(nx_per_layer.sum())
+
+
 def setup_domain(r_i_list: np.ndarray, nx: int = 100):
     lengths = np.diff(r_i_list)
-    nx_per_layer = np.rint(nx * lengths / lengths.sum()).astype(int)
-    nx_per_layer[-1] += nx - nx_per_layer.sum()  # 修正整数舍入
+    nx_per_layer, _ = allocate_cells(lengths, nx)
 
     # 逐层生成节点，去除重复界面点
     pts_list = []
@@ -106,8 +127,7 @@ def setup_domain(r_i_list: np.ndarray, nx: int = 100):
 def init_layers(r_interface_list, C_basic_list, theta_rad_list, failure_list, nx=100):
     # ---------- 计算每个单元所属层索引和单元厚度 ----------
     lengths = np.diff(r_interface_list)
-    nx_per_layer = np.rint(nx * lengths / lengths.sum()).astype(int)
-    nx_per_layer[-1] += nx - nx_per_layer.sum()  # 修正舍入
+    nx_per_layer, _ = allocate_cells(lengths, nx)
 
     # 生成所有节点坐标（确保层界面为节点）
     pts_list = []
