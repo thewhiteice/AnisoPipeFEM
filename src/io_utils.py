@@ -101,7 +101,7 @@ def load_config(path):
 
 
 def make_result_dir(root, slug, subdir=""):
-    ts = time.strftime()("%Y%m%d_%H%M%S")
+    ts = time.strftime("%Y%m%d_%H%M%S")
     out = Path(root) / subdir / f"{slug}_{ts}"
     out.mkdir(parents=True, exist_ok=True)
     return out
