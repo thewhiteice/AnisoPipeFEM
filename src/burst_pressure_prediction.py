@@ -673,7 +673,7 @@ def normalize_failure(failure, n_layers):
     return failure
 
 
-def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.e6, **overrides):
+def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.0e6, **overrides):
     """
     运行单次求解，返回数值结果。
     config_path: YAML 路径
@@ -690,7 +690,7 @@ def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.e6, **overrides
     n_layers = len(r_i_list) - 1
     nx = max(n_layers * 3, 100)
 
-    p_pre, history = analyze_failure(
+    _, history = analyze_failure(
         C_list,
         r_i_list,
         theta_list,
@@ -716,7 +716,7 @@ def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.e6, **overrides
 
 
 def main():
-    path = CONFIG_DIR / "refs" / "kangkai_2022_case1.yaml"
+    path = CONFIG_DIR / "refs" / "kangkai_2022_case3.yaml"
     res = predict_burst_pressure(path)
     print(f"p_burst = {res['p_burst_MPa']:.2f} MPa, 柔度跳变 ×{res['ratio']:.1f}")
 
