@@ -529,6 +529,7 @@ def analyze_failure(
     # 压力循环
     pbar = tqdm(total=p_i_lim / 1e6, desc="内压加载", unit="MPa")
     p_i = 0.0
+    p_predict = 0.0
     history = []
     while p_i < p_i_lim:
         p_i += dp
