@@ -7,7 +7,7 @@ from src.paths import RESULT_DIR
 from src.plot_results import plot_damage_evolution
 
 # 1. 统一指向数据所在的文件夹
-out_dir = RESULT_DIR / "defaultIV_cycle"
+out_dir = RESULT_DIR / "defaultIV_cycle_fiber"
 
 # 2. 读取数据
 data = np.load(out_dir / "history.npz")
