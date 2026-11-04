@@ -709,7 +709,6 @@ def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.0e6, **override
     return {
         "name": name,
         "slug": slug,
-        "p_burst": float(p_burst) if p_burst is not None else None,
         "p_burst_MPa": float(p_burst) / 1e6 if p_burst is not None else None,
         "ratio": float(ratio) if ratio is not None else None,
         "overrides": dict(overrides),

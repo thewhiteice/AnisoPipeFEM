@@ -100,9 +100,9 @@ def load_config(path):
     return C_list, r_interface_list, theta_rad_list, failure, name, slug
 
 
-def make_result_dir(root, slug, subdir=""):
-    ts = time.strftime("%Y%m%d_%H%M%S")
-    out = Path(root) / subdir / f"{slug}_{ts}"
+def make_result_dir(root, slug, subdir="", timestamp=True):
+    suffix = time.strftime("_%Y%m%d_%H%M%S") if timestamp else ""
+    out = Path(root) / subdir / f"{slug}{suffix}"
     out.mkdir(parents=True, exist_ok=True)
     return out
 
