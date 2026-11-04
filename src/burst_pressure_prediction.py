@@ -632,7 +632,7 @@ def analyze_failure(
             continue
 
         # 检查纤维贯通失效
-        history.append((p_i, u_vals[0], int(np.sum(state.d_ft >= 0.90))))
+        history.append((p_i, u_vals[0], int(np.sum(state.d_ft >= d_limit))))
         if np.all(state.d_ft >= d_limit):
             p_predict = p_i
             if debug:
