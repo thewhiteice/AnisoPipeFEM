@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from matplotlib.patches import Patch
 
 
 def plot_sigma_results(r_vals, s_vals, s_filename=None, coord_system="cyl"):
@@ -60,5 +62,34 @@ def plot_sigma_results(r_vals, s_vals, s_filename=None, coord_system="cyl"):
     else:
         raise ValueError("coord_system 必须是 'cyl' 或 'mat'")
 
+    fig.tight_layout()
+    return fig, axes
+
+
+def plot_damage_evolution(d_ft_history, d_fc_history, p_history=None):
+    fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
+    cmap = ListedColormap(["#F2F2F2", "#D62728"])  # 浅灰 -> 深红
+    # cmap = ListedColormap(["black", "red"])
+
+    for ax, data, title in zip(
+        axes,
+        [d_ft_history, d_fc_history],
+        ["Fiber Tension (d_ft)", "Fiber Compression (d_fc)"],
+    ):
+        mask = (data > 0).astype(int)
+        # y 轴直接用步数索引，不强制映射实际压力值，避免不等距失真
+        ax.imshow(mask, aspect="auto", cmap=cmap, origin="lower")
+        # ax.pcolormesh(mask, cmap=cmap, edgecolors='gray', linewidth=0.1)
+        ax.set_ylabel("Step Index")
+        ax.set_title(title)
+
+        # 使用图例（Legend）而非 Colorbar
+        legend_elements = [
+            Patch(facecolor="#D62728", label="Damaged"),
+            Patch(facecolor="#F2F2F2", label="No Damage"),
+        ]
+        ax.legend(handles=legend_elements, loc="upper right")
+
+    axes[-1].set_xlabel("Element Index (Inner -> Outer)")
     fig.tight_layout()
     return fig, axes

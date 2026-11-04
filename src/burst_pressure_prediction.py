@@ -632,7 +632,15 @@ def analyze_failure(
             continue
 
         # 检查纤维贯通失效
-        history.append((p_i, u_vals[0], int(np.sum(state.d_ft >= d_limit))))
+        history.append(
+            (
+                p_i,
+                u_vals[0],
+                int(np.sum(state.d_ft >= d_limit)),
+                state.d_ft.copy(),
+                state.d_fc.copy(),
+            )
+        )
         if np.all(state.d_ft >= d_limit):
             p_predict = p_i
             if debug:
@@ -644,10 +652,9 @@ def analyze_failure(
 
 def find_knee(history):
     """p-u 拐点：只在纤维失效单元数增加的步⾥，找增量柔度 du/dp 跳变最⼤的⼀步"""
-    h = np.asarray(history, dtype=float)
-    p = np.concatenate(([0.0], h[:, 0]))
-    u = np.concatenate(([0.0], h[:, 1]))
-    n = np.concatenate(([0.0], h[:, 2]))
+    p = np.concatenate(([0.0], [h[0] for h in history]))
+    u = np.concatenate(([0.0], [h[1] for h in history]))
+    n = np.concatenate(([0.0], [h[2] for h in history]))
     c = np.diff(u) / np.diff(p)  # c[k]: p[k] -> p[k+1] 的增量柔度
     jump = np.full_like(c, -np.inf)
     jump[1:] = c[1:] / c[:-1]
@@ -712,6 +719,7 @@ def predict_burst_pressure(config_path, d_limit=0.9, p_i_lim=300.0e6, **override
         "p_burst_MPa": float(p_burst) / 1e6 if p_burst is not None else None,
         "ratio": float(ratio) if ratio is not None else None,
         "overrides": dict(overrides),
+        "history": history,
     }
 
 
