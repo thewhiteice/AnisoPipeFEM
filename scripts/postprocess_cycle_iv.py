@@ -15,6 +15,8 @@ p_hist = data["p"]
 u_hist = data["u"]
 d_ft = data["d_ft"]
 d_fc = data["d_fc"]
+d_mt = data["d_mt"]
+d_mc = data["d_mc"]
 
 # 读取之前保存的 JSON 结果
 with open(out_dir / "defaultIV_solution.json", "r", encoding="utf-8") as f:
@@ -34,7 +36,11 @@ fig1.savefig(out_dir / "p_u_curve.png", dpi=300, bbox_inches="tight")
 
 # 4. 画损伤演化图
 fig2, axes2 = plot_damage_evolution(
-    d_ft_history=d_ft, d_fc_history=d_fc, p_history=p_hist
+    d_ft_history=d_ft,
+    d_fc_history=d_fc,
+    d_mt_history=d_mt,
+    d_mc_history=d_mc,
+    p_history=p_hist,
 )
 # 保存到同一个 out_dir
 fig2.savefig(out_dir / "damage_evolution.png", dpi=300, bbox_inches="tight")

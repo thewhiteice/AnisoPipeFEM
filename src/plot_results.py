@@ -66,15 +66,22 @@ def plot_sigma_results(r_vals, s_vals, s_filename=None, coord_system="cyl"):
     return fig, axes
 
 
-def plot_damage_evolution(d_ft_history, d_fc_history, p_history=None):
-    fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
+def plot_damage_evolution(
+    d_ft_history, d_fc_history, d_mt_history, d_mc_history, p_history=None
+):
+    fig, axes = plt.subplots(4, 1, figsize=(8, 8), sharex=True)
     cmap = ListedColormap(["#F2F2F2", "#D62728"])  # 浅灰 -> 深红
     # cmap = ListedColormap(["black", "red"])
 
     for ax, data, title in zip(
         axes,
-        [d_ft_history, d_fc_history],
-        ["Fiber Tension (d_ft)", "Fiber Compression (d_fc)"],
+        [d_ft_history, d_fc_history, d_mt_history, d_mc_history],
+        [
+            "Fiber Tension (d_ft)",
+            "Fiber Compression (d_fc)",
+            "Matrix Tension (d_mt)",
+            "Matrix Compression (d_mc)",
+        ],
     ):
         mask = (data > 0).astype(int)
         # y 轴直接用步数索引，不强制映射实际压力值，避免不等距失真
