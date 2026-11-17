@@ -26,5 +26,7 @@ np.savez(
     n=np.array([h[2] for h in history]),
     d_ft=np.array([h[3] for h in history]),
     d_fc=np.array([h[4] for h in history]),
+    d_mt=np.array([h[5] for h in history]),
+    d_mc=np.array([h[6] for h in history]),
 )
 print(f"  saved to: {out_dir}")

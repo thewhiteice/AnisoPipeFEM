@@ -639,6 +639,8 @@ def analyze_failure(
                 int(np.sum(state.d_ft >= d_limit)),
                 state.d_ft.copy(),
                 state.d_fc.copy(),
+                state.d_mt.copy(),
+                state.d_mc.copy(),
             )
         )
         if np.all(state.d_ft >= d_limit):

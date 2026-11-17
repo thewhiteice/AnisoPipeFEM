@@ -166,6 +166,8 @@ def analyze_failure(
                 int(np.sum(state.d_ft >= d_limit)),
                 state.d_ft.copy(),
                 state.d_fc.copy(),
+                state.d_mt.copy(),
+                state.d_mc.copy(),
             )
         )
 
@@ -281,6 +283,8 @@ def main():
         n=np.array([h[2] for h in history]),
         d_ft=np.array([h[3] for h in history]),
         d_fc=np.array([h[4] for h in history]),
+        d_mt=np.array([h[5] for h in history]),
+        d_mc=np.array([h[6] for h in history]),
     )
     print(f"  saved to: {out_dir}")
 
